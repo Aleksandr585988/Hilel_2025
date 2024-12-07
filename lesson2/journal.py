@@ -1,69 +1,113 @@
-students = {
-    1: {
-        "name": "John Doe",
-        "marks": [4, 5, 1, 4, 5, 2, 5],
-        "info": "John is 22 years old. Hobby: music",
-    },
-    2: {
-        "name": "Mary Black",
-        "marks": [4, 1, 3, 4, 5, 1, 2, 2],
-        "info": "Mary is 23 years old. Hobby: football",
-                                                            },
-}
 
-LAST_ID_CONTEXT = 2
+import csv
+
+
+class StorageHandler:
+    def __init__(self, filename):
+        self.filename = filename
+        self.students = self.load_data()
+
+    def load_data(self):
+        """Load data from CSV into memory."""
+        students = {}
+        try:
+            with open(self.filename, mode='r', newline='', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    student_id = int(row['ID'])
+                    students[student_id] = {
+                        "name": row['Name'],
+                        "marks": list(map(int, row['Marks'].split(','))),
+                        "info": row['Info']
+                    }
+        except FileNotFoundError:
+            print(f"File {self.filename} not found.")
+        except Exception as e:
+            print(f"Error loading data: {e}")
+
+        return students
+
+    def save_data(self):
+        """Write data to CSV."""
+        with open(self.filename, mode='w', newline='', encoding='utf-8') as file:
+            fieldnames = ['ID', 'Name', 'Marks', 'Info']
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            for student_id, student in self.students.items():
+                marks = student['marks'] if student['marks'] is not None else []
+                info = student.get('info', '')
+                row = {
+                    'ID': student_id,
+                    'Name': student['name'],
+                    'Marks': ','.join(map(str, marks)),
+                    'Info': info
+                }
+                writer.writerow(row)
+
+    def add_student(self, student: dict) -> dict:
+        """Add student to memory and CSV file."""
+        if student.get('marks') is None:
+            student['marks'] = []
+
+        if 'info' not in student:
+            student['info'] = ""
+
+        student_id = max(self.students.keys(), default=0) + 1
+
+        self.students[student_id] = student
+        print(f"Added student '{student['name']}' with ID {student_id}.")
+
+        try:
+            self.save_data()
+            print("Data saved to CSV successfully.")
+        except Exception as e:
+            print(f"Error saving data: {e}")
+
+        return student
+
+    def update_student(self, student_id: int, payload: dict) -> dict | None:
+        """ Update student data in memory and in CSV. """
+        student = self.students.get(student_id)
+        if student:
+            if payload.get("name"):
+                student["name"] = payload["name"]
+            if payload.get("marks") is not None:
+                student["marks"] = payload["marks"]
+            if payload.get("info"):
+                student["info"] = payload["info"]
+            self.save_data()
+            return student
+        return None
+
+    def delete_student(self, student_id: int) -> None:
+        """ Delete student from memory and from CSV file. """
+        if student_id in self.students:
+            del self.students[student_id]
+            self.save_data()
+
+
+storage_handler = StorageHandler('students.csv')
 
 
 def show_students() -> None:
     print("=" * 20)
     print("List of students:\n")
-    for student_id, student in students.items():
-        print(f"{student_id} {student['name']}, Marks: {student['marks']}")
+
+    if storage_handler.students:
+        for student_id, student in storage_handler.students.items():
+            marks = ", ".join(map(str, student['marks']))
+            name = student['name']
+            info = student['info'] if student['info'] else "No additional info"
+
+            print(f"ID: {student_id} | Name: {name} | Marks: {marks} | Info: {info}")
+    else:
+        print("No students found.")
+
     print("=" * 20)
-
-
-def search_student(id_: int) -> dict | None:
-    return students.get(id_)
-
-
-def delete_student(id_: int) -> None:
-    if search_student(id_):
-        del students[id_]
-        print(f"Student with ID '{id_}' was deleted.")
-    else:
-        print(f"Student with ID '{id_}' not found.")
-
-
-def update_student(id_: int, payload: dict) -> dict | None:
-    student = students.get(id_)
-    if student:
-        if payload.get("name") is not None:
-            student["name"] = payload["name"]
-        if payload.get("marks") is not None:
-            student["marks"] = payload["marks"]
-        return student
-    else:
-        print(f"Student with ID '{id_}' not found.")
-        return None
-
-
-def add_student(student: dict) -> dict | None:
-    global LAST_ID_CONTEXT
-
-    if not student.get("name"):
-        print("Missing mandatory field: name. Student not added.")
-        return None
-    LAST_ID_CONTEXT += 1
-    students[LAST_ID_CONTEXT] = student
-    return student
 
 
 def add_mark():
     student_id = input("Enter student ID to add a mark: ")
-
-    if not student_id:
-        print("ID cannot be empty.")
-        return
 
     try:
         id_ = int(student_id)
@@ -71,7 +115,8 @@ def add_mark():
         print(f"ID '{student_id}' is not a valid value.")
         return
 
-    student = search_student(id_)
+    student = storage_handler.students.get(id_)
+
     if student is None:
         print(f"Student with ID '{id_}' not found.")
         return
@@ -92,6 +137,7 @@ def add_mark():
             print(f"'{mark_input}' is not a valid mark. Marks must be numbers from 1 to 5, separated by commas.")
 
     student['marks'].extend(marks)
+    storage_handler.save_data()
     print(f"Marks {marks} added for student '{student['name']}'.")
 
 
@@ -101,7 +147,7 @@ def student_details(student: dict) -> None:
 
 def ask_student_payload():
     prompt = ("Enter student data: you can enter 'First Last' for the name,"
-              " '4,5,4,5,4,5' for the marks or both values: ")
+              " 4,5,4,5,4,5 for the marks or both values: ")
     input_data = input(prompt)
 
     items = input_data.split(";")
@@ -110,16 +156,16 @@ def ask_student_payload():
         if "," in items[0]:
             try:
                 marks = [int(item) for item in items[0].split(",")]
-                return {"name": None, "marks": marks}
+                return {"name": None, "marks": marks, "info": ""}
             except ValueError:
-                print("Marks are incorrect. Template: '4,5,4,5,4,5'. Marks must be numbers.")
+                print("Marks are incorrect. Template: 4,5,4,5,4,5. Marks must be numbers.")
                 return None
         else:
             name = items[0].strip()
             if not name:
                 print("Name cannot be empty. Student not added.")
                 return None
-            return {"name": name, "marks": None}
+            return {"name": name, "marks": None, "info": ""}
 
     if len(items) == 2:
         name = items[0].strip()
@@ -128,9 +174,9 @@ def ask_student_payload():
             return None
         try:
             marks = [int(item) for item in items[1].split(",")]
-            return {"name": name, "marks": marks}
+            return {"name": name, "marks": marks, "info": ""}
         except ValueError:
-            print("Marks are incorrect. Template: '4,5,4,5,4,5'. Marks must be numbers.")
+            print("Marks are incorrect. Template: 4,5,4,5,4,5. Marks must be numbers.")
             return None
 
     print("Mandatory fields (name, marks) are missing. Student not added.")
@@ -138,8 +184,10 @@ def ask_student_payload():
 
 
 def handle_management_command(command: str):
+
     if command == "show list":
         show_students()
+
     elif command == "get by id":
         search_id = input("Enter student ID to retrieve data: ")
         try:
@@ -147,11 +195,12 @@ def handle_management_command(command: str):
         except ValueError:
             print(f"ID '{search_id}' is not a valid value.")
         else:
-            student = search_student(id_)
+            student = storage_handler.students.get(id_)
             if student:
                 student_details(student)
             else:
                 print(f"Student with ID '{id_}' not found.")
+
     elif command == "delete":
         delete_id = input("Enter student ID to delete: ")
         try:
@@ -159,15 +208,17 @@ def handle_management_command(command: str):
         except ValueError:
             print(f"ID '{delete_id}' is not a valid value.")
         else:
-            delete_student(id_)
+            storage_handler.delete_student(id_)
+
     elif command == "add":
         data = ask_student_payload()
         if data:
-            student = add_student(data)
+            student = storage_handler.add_student(data)
             if student:
-                print(f"New student '{student['name']}' added.")
-            else:
-                print("Student was not added.")
+                print(f"New student '{student}' added.")
+        else:
+            print("No data provided for adding student.")
+
     elif command == "rename":
         update_id = input("Enter student ID to update data: ")
         try:
@@ -177,13 +228,12 @@ def handle_management_command(command: str):
         else:
             data = ask_student_payload()
             if data:
-                updated_student = update_student(id_, data)
+                updated_student = storage_handler.update_student(id_, data)
                 if updated_student:
                     print(f"Student data updated: {updated_student}")
                 else:
                     print("Failed to update student data.")
-            else:
-                print("Invalid data entered for update.")
+
     elif command == "add mark":
         add_mark()
     else:
