@@ -55,7 +55,7 @@ class Price:
         return f"Price({self.value}, '{self.currency}')"
 
 
-class Main:
+class CurrencyManager:
     @staticmethod
     def create_price_object():
         while True:
@@ -98,8 +98,8 @@ class Main:
         print(f"Available currencies: {', '.join(valid_currencies)}")
 
         while True:
-            g = Main.create_price_object()
-            h = Main.create_price_object()
+            g = CurrencyManager.create_price_object()
+            h = CurrencyManager.create_price_object()
 
             operator = input('Select an action. <+> or <->: ').strip()
             if operator == '+':
@@ -109,9 +109,9 @@ class Main:
             else:
                 print(f"Invalid action. Please select <+> or <->. {operator} is not supported.")
 
-            if not Main.continue_work():
+            if not CurrencyManager.continue_work():
                 break
 
 
 if __name__ == '__main__':
-    Main.run()
+    CurrencyManager.run()
