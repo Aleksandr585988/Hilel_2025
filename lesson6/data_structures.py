@@ -47,21 +47,21 @@ def validate_config(config: dict) -> bool:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-    logging.info("Initial GLOBAL_CONFIG: %s", GLOBAL_CONFIG)
+    logging.info(f"Initial GLOBAL_CONFIG: {GLOBAL_CONFIG}")
 
     # Example 1: Successful configuration update
     try:
         with Configuration({"feature_a": False, "max_retries": 5}):
-            logging.info("Inside context: %s", GLOBAL_CONFIG)
+            logging.info(f"Inside context: {GLOBAL_CONFIG}")
 
     except Exception as e:
-        logging.error("Error: %s", e)
-    logging.info("After context: %s", GLOBAL_CONFIG)
+        logging.error(f"Error: {e}")
+    logging.info(f"After context: {GLOBAL_CONFIG}", )
 
     # Example 2: Configuration update with validation failure
     try:
         with Configuration({"feature_a": "invalid_value", "max_retries": -1}, validator=validate_config):
             logging.info("This should not be printed if validation fails.")
     except Exception as e:
-        logging.error("Caught exception: %s", e)
-    logging.info("After failed context: %s", GLOBAL_CONFIG)
+        logging.error(f"Caught exception: {e}")
+    logging.info(f"After failed context: {GLOBAL_CONFIG}")
