@@ -26,10 +26,6 @@ class Configuration:
         logging.info(f"Configuration updates: {self.updates}")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Exit the context: Restore the original configuration and handle validation or exceptions."""
-
-        if self.validator and not self.validator(GLOBAL_CONFIG):
-            logging.error(f"Configuration validation failed: {self.validator(GLOBAL_CONFIG)}")
 
         GLOBAL_CONFIG.clear()
         GLOBAL_CONFIG.update(self.original_config)
@@ -61,7 +57,7 @@ if __name__ == "__main__":
     # Example 2: Configuration update with validation failure
     try:
         with Configuration({"feature_a": "invalid_value", "max_retries": -1}, validator=validate_config):
-            logging.info("This should not be printed if validation fails.")
+            logging.info("Validation failed")
     except Exception as e:
         logging.error(f"Caught exception: {e}")
     logging.info(f"After failed context: {GLOBAL_CONFIG}")
